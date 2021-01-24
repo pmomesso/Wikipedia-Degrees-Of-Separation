@@ -12,13 +12,17 @@ import (
 const baseURL = "https://en.wikipedia.org/wiki/"
 
 func filterWikipediaURLs(urls []string) map[string]string {
-	re := regexp.MustCompile(`^\/wiki\/`)
+	rePrefix := regexp.MustCompile(`^\/wiki\/`)
+	reName := regexp.MustCompile(`[^:]+$`)
 	ret := make(map[string]string)
 	for _, url := range urls {
 		if len(url) != 0 {
-			found := re.FindStringIndex(url)
-			if len(found) != 0 {
-				ret[url[found[1]:]] = baseURL + url[found[1]:]
+			foundPrefix := rePrefix.FindStringIndex(url)
+			if len(foundPrefix) != 0 {
+				foundName := reName.FindString(url[foundPrefix[1]:])
+				if foundName != "" {
+					ret[foundName] = baseURL + foundName
+				}
 			}
 		}
 	}
