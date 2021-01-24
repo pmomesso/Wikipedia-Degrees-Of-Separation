@@ -13,7 +13,7 @@ const baseURL = "https://en.wikipedia.org/wiki/"
 
 func filterWikipediaURLs(urls []string) map[string]string {
 	rePrefix := regexp.MustCompile(`^\/wiki\/`)
-	reName := regexp.MustCompile(`[^:]+$`)
+	reName := regexp.MustCompile(`^[^:]+$`)
 	ret := make(map[string]string)
 	for _, url := range urls {
 		if len(url) != 0 {
@@ -48,7 +48,8 @@ func rec(curr *html.Node, urls *[]string) {
 	}
 }
 
-func worker(url string, end string, depth int, maxDepth int, path []string, done chan<- []string) {
+func worker(url string, end string, depth int, maxDepth int, path []string, result chan<- []string) {
+	// fmt.Printf("%p\n", &path)
 	if depth == maxDepth {
 		return
 	}
@@ -64,10 +65,13 @@ func worker(url string, end string, depth int, maxDepth int, path []string, done
 	urlsMap := filterWikipediaURLs(gatherURLs(doc))
 	for childTitle, childURL := range urlsMap {
 		if childTitle == end {
-			done <- append(path, childTitle)
+			result <- append(path, childTitle+" "+childURL)
 			return
 		}
-		go worker(childURL, end, depth+1, maxDepth, append(path, childTitle), done)
+		res := make([]string, len(path))
+		copy(res, path)
+		res = append(res, childTitle+" "+childURL)
+		go worker(childURL, end, depth+1, maxDepth, res, result)
 	}
 }
 
@@ -79,8 +83,7 @@ func main() {
 
 	fmt.Println(baseURL+*fromArg, " ", baseURL+*toArg)
 
-	done := make(chan []string, 1)
-
-	worker(baseURL+*fromArg, *toArg, 0, -1, []string{*fromArg}, done)
-	fmt.Println(<-done)
+	result := make(chan []string, 1)
+	worker(baseURL+*fromArg, *toArg, 0, -1, []string{*fromArg}, result)
+	fmt.Println(<-result)
 }
